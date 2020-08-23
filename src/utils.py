@@ -23,3 +23,27 @@ def crop_out_polygon(img, polygon):
     m = cv2.getPerspectiveTransform(np.array(polygon, dtype='float32'), target_polygon)
 
     return cv2.warpPerspective(img, m, (int(side_size), int(side_size)))
+
+
+def overlay_images(background, foreground, alpha):
+    foreground = foreground.astype(float) / 255
+    background = background.astype(float) / 255
+    alpha = alpha.astype(float) / 255
+
+    assert foreground.shape == alpha.shape
+
+    dim_diff = [b - a for b, a in zip(background.shape, alpha.shape)]
+
+    foreground = np.pad(foreground, [(0, max(diff, 0)) for diff in dim_diff])
+    alpha = np.pad(alpha, [(0, max(diff, 0)) for diff in dim_diff])
+
+    bck_shp = background.shape
+    foreground = foreground[:bck_shp[0], :bck_shp[1], :bck_shp[0]]
+    alpha = alpha[:bck_shp[0], :bck_shp[1], :bck_shp[0]]
+
+    foreground = cv2.multiply(alpha, foreground)
+    background = cv2.multiply(1.0 - alpha, background)
+
+    result = cv2.add(foreground, background)
+
+    return result
