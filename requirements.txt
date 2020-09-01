@@ -29,7 +29,7 @@ requests-oauthlib==1.3.0
 rsa==4.6
 scipy==1.4.1
 six==1.15.0
-sudoku-solver-mackopes @ git+https://github.com/mackopes/sudoku-solver.git@b7d7ac661192f3c051cabd5bf77becd711ea0b18
+sudoku-solver @ git+https://github.com/mackopes/sudoku-solver.git@ba31892b0c3d209d2ad11db7824c2579b8ed9a78
 tensorboard==2.3.0
 tensorboard-plugin-wit==1.7.0
 tensorflow==2.3.0
