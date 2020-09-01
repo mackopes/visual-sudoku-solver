@@ -2,71 +2,17 @@ import cv2
 import numpy as np
 from pathlib import Path
 import tensorflow as tf
+from copy import deepcopy
+import threading
+from datetime import datetime
+import time
 
-from utils import crop_out_polygon, show_image, overlay_images
+from utils import crop_out_polygon, overlay_images, sudoku_grid, draw_numbers_in_sudoku_grid, Color
 from cv_sudoku_detector import find_sudoku
-
-
-SUDOKU_IMAGES = "../resources/sudoku-image-solver/sudoku_images"
-TEST_SUDOKU_IMAGE = SUDOKU_IMAGES + "/sudoku12.jpg"
+from webcam_stream import WebcamStream
+from sudoku_solver.sudoku import Sudoku
 
 model_file = Path("model_data")
-
-
-def sudoku_grid():
-    img = np.zeros((800, 800, 3), np.uint8)
-    alpha = np.zeros((800, 800, 3), np.uint8)
-
-    cv2.rectangle(img, (1, 1), (800, 800), (255, 0, 0), 5)
-    cv2.rectangle(alpha, (1, 1), (800, 800), (255, 255, 255), 5)
-
-    # cv2.line(img, (0, 266), (800, 266), (0, 0, 255), 3)
-    # cv2.line(alpha, (0, 266), (800, 266), (0, 0, 255), 3)
-
-    # cv2.line(img, (0, 533), (800, 533), (0, 0, 255), 3)
-    # cv2.line(alpha, (0, 533), (800, 533), (0, 0, 255), 3)
-
-    # cv2.line(img, (266, 0), (266, 800), (0, 0, 255), 3)
-    # cv2.line(alpha, (266, 0), (266, 800), (0, 0, 255), 3)
-
-    # cv2.line(img, (533, 0), (533, 800), (0, 0, 255), 3)
-    # cv2.line(alpha, (533, 0), (533, 800), (0, 0, 255), 3)
-
-    return img, alpha
-
-
-def draw_numbers_in_grid(img, numbers, font_color):
-    cell_size = img.shape[0] / 9, img.shape[1] / 9
-
-    img = img.copy()
-
-    font = cv2.FONT_HERSHEY_SIMPLEX
-    font_scale = 2
-    lineType = 2
-
-    for i, row in enumerate(numbers):
-        for j, n in enumerate(row):
-
-            cv2.putText(img, str(n),
-                        (int((j + 0.3) * cell_size[1]), int((i + 0.8) * cell_size[0])),
-                        font,
-                        font_scale,
-                        font_color,
-                        lineType)
-
-    return img
-
-
-random_sudoku = [[0, 0, 0, 0, 0, 0, 0, 0, 0],
-                 [1, 2, 3, 4, 5, 6, 7, 8, 9],
-                 [0, 0, 0, 0, 0, 0, 0, 0, 0],
-                 [0, 0, 0, 0, 0, 0, 0, 0, 0],
-                 [0, 0, 0, 0, 0, 0, 0, 0, 0],
-                 [0, 0, 0, 0, 0, 0, 0, 0, 0],
-                 [0, 0, 0, 0, 0, 0, 0, 0, 0],
-                 [0, 0, 0, 0, 0, 0, 0, 0, 0],
-                 [0, 0, 0, 0, 0, 0, 0, 0, 0],
-                 ]
 
 
 model = tf.keras.models.load_model(model_file)
@@ -97,6 +43,8 @@ def classify_sudoku(img):
     if img is None:
         return []
 
+    img = cv2.resize(img, (360, 360))
+
     img = cv2.cvtColor(img, cv2.COLOR_BGR2GRAY)
     img = cv2.adaptiveThreshold(img, 255, cv2.ADAPTIVE_THRESH_GAUSSIAN_C, cv2.THRESH_BINARY, 21, 5)
     img = cv2.bitwise_not(img)
@@ -104,79 +52,149 @@ def classify_sudoku(img):
 
     cell_size = img.shape[0] / 9, img.shape[1] / 9
 
+    assert cell_size == (40, 40)
     grid = [[None for _ in range(9)] for _ in range(9)]
 
-    cells_list = []
     for i in range(9):
         for j in range(9):
             cell = img[int(i * cell_size[1]):int((i + 1) * cell_size[1]), int(j * cell_size[0]):int((j + 1) * cell_size[0])]
-            cell = cv2.resize(cell, (40, 40))
-            # cv2.line(cell, (40, 0), (40, 40), 0, 4)
-            # cv2.line(cell, (0, 0), (0, 40), 0, 4)
-            # cv2.line(cell, (0, 0), (40, 0), 0, 4)
-            # cv2.line(cell, (0, 40), (40, 40), 0, 4)
-            cells_list.append(cell)
-            cell = cell[tf.newaxis, ..., tf.newaxis]
-            grid[i][j] = np.argmax(model(cell))
+            assert cell.shape == (40, 40)
+            if np.sum(cell[10:30, 10:30]) > 310:
+                grid[i][j] = np.array([1], [0], [0], [0], [0], [0], [0], [0], [0], [0])
+            else:
+                cell = cell[tf.newaxis, ..., tf.newaxis]
+                grid[i][j] = model(cell)
 
-    cv2.imshow('frame2', np.concatenate(cells_list, axis=1))
+    return np.array(grid)
 
-    return grid
+
+def get_sudoku_solving_func_with_cache():
+    prev_sudoku_to_solve = None
+    prev_result_to_sudoku = None
+
+    def solve_sudoku(sudoku):
+        # very naive caching
+        global prev_sudoku_to_solve
+        global prev_result_to_sudoku
+
+        similar_count = 0
+        if prev_sudoku_to_solve is not None:
+            for row_c, row_p in zip(sudoku, prev_sudoku_to_solve):
+                for elem_c, elem_p in zip(row_c, row_p):
+                    if elem_p == elem_c and elem_p != 0:
+                        similar_count += 1
+            if similar_count > 20:
+                return prev_result_to_sudoku
+
+        sudoku_copy = deepcopy(sudoku)
+        sudoku = Sudoku(sudoku)
+
+        t = threading.Thread(target=sudoku.solve)
+        t.start()
+
+        t.join(timeout=1)
+
+        if t.is_alive():
+            return sudoku_copy
+        else:
+            prev_sudoku_to_solve = sudoku_copy
+            prev_result_to_sudoku = sudoku.grid
+            return sudoku.grid
+
+    return solve_sudoku
+
+
+def show_frame_and_wait_key(frame):
+    cv2.imshow('frame', frame)
+    k = cv2.waitKey(1) & 0xFF
+    if k == ord('q'):
+        return True
+
+    return False
+
+
+src_polygon = np.array([[0, 0], [800, 0], [800, 800], [0, 800]], dtype='float32')
+overlay_img, overlay_alpha = sudoku_grid()
+
+# coputed overlay for the sudoku (image and alpha)
+ready_i, ready_a = None, None
+
+# cropped out sudoku.
+# useful for constructing training set
+ready_crop = None
+
+
+def compute_the_sudoku(frame, solve_sudoku):
+    global ready_i, ready_a, ready_crop
+    try:
+        polygon = find_sudoku(frame)
+    except:
+        ready_i, ready_a = None, None
+        return
+
+    if polygon is None:
+        ready_i, ready_a = None, None
+        return
+
+    crop = crop_out_polygon(frame, polygon)
+    ready_crop = crop
+
+    sudoku_proc = classify_sudoku(crop)
+    sudoku_classified = np.argmax(sudoku_proc, axis=3).reshape((9, 9))
+
+    solved_sudoku = solve_sudoku(sudoku_classified.tolist())
+
+    i = draw_numbers_in_sudoku_grid(overlay_img, solved_sudoku, Color.GREEN)
+    a = draw_numbers_in_sudoku_grid(overlay_img, solved_sudoku, Color.WHITE)
+
+    m = cv2.getPerspectiveTransform(src_polygon, np.array(polygon, dtype='float32'))
+    i = cv2.warpPerspective(i, m, (1280, 700))
+    a = cv2.warpPerspective(a, m, (1280, 700))
+
+    ready_i, ready_a = i, a
 
 
 def main():
     saved_cells = 0
-    # sudoku_image = cv2.imread(TEST_SUDOKU_IMAGE)
-    # show_image(sudoku_image)
+    webcam = WebcamStream()
+    solve_sudoku = get_sudoku_solving_func_with_cache()
 
-    cap = cv2.VideoCapture(0)
+    webcam.start()
+    sudoku_computing_thread = None
+    i, a = None, None
+    while True:
+        frame = webcam.read()
 
-    # polygon = find_sudoku(sudoku_image)
+        if sudoku_computing_thread is None or not sudoku_computing_thread.is_alive():
+            # get the previous result
+            i, a = ready_i, ready_a
+            sudoku_computing_thread = threading.Thread(target=compute_the_sudoku, args=[frame, solve_sudoku])
+            sudoku_computing_thread.start()
 
-    # cropped_sudoku = crop_out_polygon(np.copy(sudoku_image), polygon)
-
-    # show_image(cropped_sudoku)
-
-    overlay_img, overlay_alpha = sudoku_grid()
-    # draw_numbers_in_grid(overlay_img, random_sudoku, (0, 255, 0))
-    # draw_numbers_in_grid(overlay_alpha, random_sudoku, (255, 255, 255))
-
-    src_polygon = np.array([[0, 0], [800, 0], [800, 800], [0, 800]], dtype='float32')
-    while(True):
-        # Capture frame-by-frame
-        ret, frame = cap.read()
-
-        # Our operations on the frame come here
-        # gray = cv2.cvtColor(frame, cv2.COLOR_BGR2GRAY)
-
-        polygon = find_sudoku(frame)
-        if polygon is None:
-            crop = None
-        else:
-            crop = crop_out_polygon(frame, polygon)
-
-        sudoku_classified = classify_sudoku(crop)
-
-        i = draw_numbers_in_grid(overlay_img, sudoku_classified, (0, 255, 0))
-        a = draw_numbers_in_grid(overlay_img, sudoku_classified, (255, 255, 255))
-
-        m = cv2.getPerspectiveTransform(src_polygon, np.array(polygon, dtype='float32'))
-        i = cv2.warpPerspective(i, m, (1280, 700))
-        a = cv2.warpPerspective(a, m, (1280, 700))
-
-        img = overlay_images(frame, i, a)
+        if i is not None and a is not None:
+            frame = overlay_images(frame, i, a)
 
         # Display the resulting frame
-        cv2.imshow('frame', img)
+        cv2.imshow('frame', frame)
         k = cv2.waitKey(1) & 0xFF
         if k == ord('q'):
             break
-        if k == ord('a'):
-            cells = collect_cells(crop)
+        if k == ord('a') and ready_crop is not None:
+            cells = collect_cells(ready_crop)
             for cell in cells:
-                print(f"saving macka_{saved_cells}.jpg")
-                cv2.imwrite(f'resources/training_ds/macka_{saved_cells}.jpg', cell * 255)
+                label = np.argmax(model(cell[tf.newaxis, ..., tf.newaxis]))
+                print(f"saving {label}_{3}_{saved_cells}.jpg")
+                cv2.imwrite(f'resources/training_ds/{label}_8_{saved_cells}.jpg', cell * 255)
                 saved_cells += 1
+
+        time.sleep(1 / 30)
+
+    if sudoku_computing_thread is not None:
+        t.join()
+
+    webcam.stop()
+
+    print("FPS:", webcam.fps())
 
 
 if __name__ == '__main__':

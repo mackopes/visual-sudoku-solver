@@ -1,10 +1,36 @@
 import cv2
 import numpy as np
 import operator
+from utils import crop_out_polygon
+
+RESIZE_FACTOR = 4
 
 
 def find_sudoku(sudoku_image):
-    sudoku_gray = cv2.cvtColor(sudoku_image, cv2.COLOR_BGR2GRAY)
+    initial_polygon = _find_sudoku(sudoku_image, RESIZE_FACTOR)
+    tl, tr, br, bl = initial_polygon
+
+    offset = 15
+    top = min(tl[1], tr[1]) - offset
+    bottom = max(bl[1], br[1]) + offset
+    left = min(tl[0], bl[0]) - offset
+    right = max(tr[0], br[0]) + offset
+
+    # bounding_box = np.array([[left, top], [right, top], [right, bottom], [left, bottom]])
+
+    if abs((bottom - top) - (right - left)) > 0.25 * (bottom - top):
+        return None
+
+    crop = sudoku_image[top:bottom, left:right]
+    polygon_refined = _find_sudoku(crop)
+
+    return polygon_refined + np.array([left, top])
+
+
+def _find_sudoku(sudoku_image, scale=1):
+    sudoku_small = cv2.resize(sudoku_image, (0, 0), fx=1 / scale, fy=1 / scale)
+
+    sudoku_gray = cv2.cvtColor(sudoku_small, cv2.COLOR_BGR2GRAY)
 
     blur = cv2.GaussianBlur(sudoku_gray, (7, 7), 0)
     threshold = cv2.adaptiveThreshold(blur, 255, cv2.ADAPTIVE_THRESH_GAUSSIAN_C, cv2.THRESH_BINARY, 21, 5)
@@ -29,6 +55,8 @@ def find_sudoku(sudoku_image):
 
     # Return an array of all 4 points using the indices
     # Each point is in its own array of one coordinate
-    points = [largest_contour[top_left][0], largest_contour[top_right][0], largest_contour[bottom_right][0], largest_contour[bottom_left][0]]
+    points = np.array([largest_contour[top_left][0], largest_contour[top_right][0], largest_contour[bottom_right][0], largest_contour[bottom_left][0]])
+
+    points = points * scale
 
     return points

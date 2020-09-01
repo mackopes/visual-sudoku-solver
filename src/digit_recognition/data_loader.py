@@ -4,6 +4,7 @@ from src.utils import show_image
 import os
 import numpy as np
 from itertools import product, count
+from collections import defaultdict
 
 
 def load_images_from_folder(folder, size=None):
@@ -75,8 +76,20 @@ def load_ds(train_ds_dir, test_ds_dir, size=None):
 # TEST_DS_DIR = "resources/sudoku-image-solver/ocr_data/testing/"
 # DST = 'resources/custom_testing_ds/'
 
-# train_x, train_y = load_images_from_folder(TRAIN_DS_DIR, IMG_SIZE)
-# test_x, test_y = load_images_from_folder(TEST_DS_DIR, IMG_SIZE)
 
-# for i, img, label in zip(count(), test_x, test_y):
-#     cv2.imwrite(f'{DST}{label}_{i}_dl.jpg', img)
+# train_x, train_y = load_images_from_folder(TRAIN_DS_DIR, IMG_SIZE)
+# areas = defaultdict(float)
+# counts = defaultdict(int)
+
+# for x, y in zip(train_x, train_y):
+#     middle_crop = x[10:30, 10:30]
+#     areas[y] += np.sum(middle_crop) / 255.0
+#     counts[y] += 1
+
+# for k, v in areas.items():
+#     print(k, v / counts[k])
+
+    # test_x, test_y = load_images_from_folder(TEST_DS_DIR, IMG_SIZE)
+
+    # for i, img, label in zip(count(), test_x, test_y):
+    #     cv2.imwrite(f'{DST}{label}_{i}_dl.jpg', img)

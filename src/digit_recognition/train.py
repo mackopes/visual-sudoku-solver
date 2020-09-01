@@ -6,8 +6,9 @@ from pathlib import Path
 IMG_SIZE = (40, 40)
 # TRAIN_DS_DIR = "resources/sudoku-image-solver/ocr_data/training/"
 # TEST_DS_DIR = "resources/sudoku-image-solver/ocr_data/testing/"
+# TRAIN_DS_DIR = "resources/custom_training_ds_no_download/"
 TRAIN_DS_DIR = "resources/custom_training_ds_no_download/"
-TEST_DS_DIR = "resources/custom_testing_ds/"
+TEST_DS_DIR = "resources/custom_testing_ds_no_download/"
 model_file = Path("model_data")
 
 
@@ -50,7 +51,7 @@ def train_step(images, labels):
     train_accuracy(labels, predictions)
 
 
-EPOCHS = 10
+EPOCHS = 5
 train_ds, test_ds = load_ds(TRAIN_DS_DIR, TEST_DS_DIR, IMG_SIZE)
 
 
