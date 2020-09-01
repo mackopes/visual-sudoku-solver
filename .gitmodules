@@ -1,3 +1,6 @@
 [submodule "resources/sudoku-image-solver"]
 	path = resources/sudoku-image-solver
 	url = https://github.com/kirkeaton/sudoku-image-solver.git
+[submodule "src/sudoku-solver"]
+	path = src/sudoku-solver
+	url = git@github.com:mackopes/sudoku-solver.git
