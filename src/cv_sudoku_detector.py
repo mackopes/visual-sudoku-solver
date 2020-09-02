@@ -16,8 +16,6 @@ def find_sudoku(sudoku_image):
     left = min(tl[0], bl[0]) - offset
     right = max(tr[0], br[0]) + offset
 
-    # bounding_box = np.array([[left, top], [right, top], [right, bottom], [left, bottom]])
-
     if abs((bottom - top) - (right - left)) > 0.25 * (bottom - top):
         return None
 
@@ -37,7 +35,6 @@ def _find_sudoku(sudoku_image, scale=1):
 
     kernel = np.ones((5, 5), np.uint8)
     not_threshold = cv2.bitwise_not(threshold)
-    # erode = cv2.erode(not_threshold, kernel)
     dilate = cv2.dilate(not_threshold, kernel, iterations=1)
 
     contours, hierarchy = cv2.findContours(dilate, cv2.RETR_EXTERNAL, cv2.CHAIN_APPROX_SIMPLE)
@@ -46,7 +43,6 @@ def _find_sudoku(sudoku_image, scale=1):
         return None
 
     largest_contour = max(contours, key=cv2.contourArea)
-    # largest_contour_image = cv2.drawContours(sudoku_image, largest_contour, -1, (0, 0, 255), 2)
 
     bottom_right, _ = max(enumerate([pt[0][0] + pt[0][1] for pt in largest_contour]), key=operator.itemgetter(1))
     top_left, _ = min(enumerate([pt[0][0] + pt[0][1] for pt in largest_contour]), key=operator.itemgetter(1))
