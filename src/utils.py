@@ -10,9 +10,9 @@ class Color:
 
 
 def show_image(image, delay=10000):
-    cv2.namedWindow("macka", cv2.WINDOW_NORMAL)
-    cv2.resizeWindow("macka", 800, 800)
-    cv2.imshow("macka", image)
+    cv2.namedWindow("sudoku", cv2.WINDOW_NORMAL)
+    cv2.resizeWindow("sudoku", 800, 800)
+    cv2.imshow("sudoku", image)
 
     cv2.waitKey(delay)
 
@@ -58,6 +58,7 @@ def overlay_images(background, foreground, alpha):
 
 
 def sudoku_grid():
+    # TODO: make this more generic to work with different sizes
     img = np.zeros((800, 800, 3), np.uint8)
     alpha = np.zeros((800, 800, 3), np.uint8)
 

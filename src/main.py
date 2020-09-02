@@ -12,9 +12,8 @@ from cv_sudoku_detector import find_sudoku
 from webcam_stream import WebcamStream
 from sudoku_solver.sudoku import Sudoku
 
+# TODO: do not use global variables
 model_file = Path("model_data")
-
-
 model = tf.keras.models.load_model(model_file)
 
 
@@ -109,6 +108,7 @@ def show_frame_and_wait_key(frame):
     return False
 
 
+# TODO: do not use global variables for this
 src_polygon = np.array([[0, 0], [800, 0], [800, 800], [0, 800]], dtype='float32')
 overlay_img, overlay_alpha = sudoku_grid()
 
@@ -120,7 +120,7 @@ ready_i, ready_a = None, None
 ready_crop = None
 
 
-def compute_the_sudoku(frame, solve_sudoku):
+def compute_and_draw_sudoku(frame, solve_sudoku):
     global ready_i, ready_a, ready_crop
     try:
         polygon = find_sudoku(frame)
@@ -164,7 +164,7 @@ def main():
         if sudoku_computing_thread is None or not sudoku_computing_thread.is_alive():
             # get the previous result
             i, a = ready_i, ready_a
-            sudoku_computing_thread = threading.Thread(target=compute_the_sudoku, args=[frame, solve_sudoku])
+            sudoku_computing_thread = threading.Thread(target=compute_and_draw_sudoku, args=[frame, solve_sudoku])
             sudoku_computing_thread.start()
 
         if i is not None and a is not None:
@@ -180,7 +180,7 @@ def main():
             for cell in cells:
                 label = np.argmax(model(cell[tf.newaxis, ..., tf.newaxis]))
                 print(f"saving {label}_{3}_{saved_cells}.jpg")
-                cv2.imwrite(f'resources/training_ds/{label}_8_{saved_cells}.jpg', cell * 255)
+                cv2.imwrite(f'resources/training_ds/{label}_{saved_cells}.jpg', cell * 255)
                 saved_cells += 1
 
         time.sleep(1 / 30)
