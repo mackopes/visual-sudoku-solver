@@ -4,8 +4,8 @@ import tensorflow as tf
 from pathlib import Path
 
 IMG_SIZE = (40, 40)
-TRAIN_DS_DIR = "resources/custom_training_ds_no_download/"
-TEST_DS_DIR = "resources/custom_testing_ds_no_download/"
+TRAIN_DS_DIR = "resources/training_ds/"
+TEST_DS_DIR = "resources/testing_ds/"
 model_file = Path("model_data")
 
 
