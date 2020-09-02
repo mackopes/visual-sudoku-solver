@@ -1,10 +1,7 @@
 import cv2
 import tensorflow as tf
-from src.utils import show_image
 import os
 import numpy as np
-from itertools import product, count
-from collections import defaultdict
 
 
 def load_images_from_folder(folder, size=None):

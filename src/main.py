@@ -4,7 +4,6 @@ from pathlib import Path
 import tensorflow as tf
 from copy import deepcopy
 import threading
-from datetime import datetime
 import time
 
 from utils import crop_out_polygon, overlay_images, sudoku_grid, draw_numbers_in_sudoku_grid, Color

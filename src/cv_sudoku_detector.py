@@ -1,7 +1,6 @@
 import cv2
 import numpy as np
 import operator
-from utils import crop_out_polygon
 
 RESIZE_FACTOR = 4
 
