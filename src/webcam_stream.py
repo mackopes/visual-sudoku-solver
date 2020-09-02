@@ -1,7 +1,8 @@
 import cv2
-import datetime
 import threading
 import time
+
+from datetime import datetime
 
 
 class WebcamStream:
@@ -27,14 +28,15 @@ class WebcamStream:
             time.sleep(1 / 30)
 
     def start(self):
-        t = threading.Thread(target=self.update)
-        t.start()
+        self.thread = threading.Thread(target=self.update)
+        self.thread.start()
         self.start_time = datetime.now()
         self.end_time = None
 
     def stop(self):
         self.stopped = True
         self.end_time = datetime.now()
+        self.thread.join()
 
     def fps(self):
         if self.start_time is None:

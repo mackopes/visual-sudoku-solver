@@ -69,22 +69,15 @@ def classify_sudoku(img):
 
 
 def get_sudoku_solving_func_with_cache():
-    prev_sudoku_to_solve = None
-    prev_result_to_sudoku = None
-
     def solve_sudoku(sudoku):
-        # very naive caching
-        global prev_sudoku_to_solve
-        global prev_result_to_sudoku
-
         similar_count = 0
-        if prev_sudoku_to_solve is not None:
-            for row_c, row_p in zip(sudoku, prev_sudoku_to_solve):
+        if solve_sudoku.prev_sudoku_to_solve is not None:
+            for row_c, row_p in zip(sudoku, solve_sudoku.prev_sudoku_to_solve):
                 for elem_c, elem_p in zip(row_c, row_p):
                     if elem_p == elem_c and elem_p != 0:
                         similar_count += 1
             if similar_count > 20:
-                return prev_result_to_sudoku
+                return solve_sudoku.prev_result_to_sudoku
 
         sudoku_copy = deepcopy(sudoku)
         sudoku = Sudoku(sudoku)
@@ -97,9 +90,12 @@ def get_sudoku_solving_func_with_cache():
         if t.is_alive():
             return sudoku_copy
         else:
-            prev_sudoku_to_solve = sudoku_copy
-            prev_result_to_sudoku = sudoku.grid
+            solve_sudoku.prev_sudoku_to_solve = sudoku_copy
+            solve_sudoku.prev_result_to_sudoku = sudoku.grid
             return sudoku.grid
+
+    solve_sudoku.prev_sudoku_to_solve = None
+    solve_sudoku.prev_result_to_sudoku = None
 
     return solve_sudoku
 
@@ -190,7 +186,7 @@ def main():
         time.sleep(1 / 30)
 
     if sudoku_computing_thread is not None:
-        t.join()
+        sudoku_computing_thread.join()
 
     webcam.stop()
 

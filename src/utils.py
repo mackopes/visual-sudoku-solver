@@ -1,9 +1,8 @@
 import cv2
 import numpy as np
-from enum import Enum
 
 
-class Color(Enum):
+class Color:
     BLUE = (255, 0, 0)
     RED = (0, 0, 255)
     GREEN = (0, 255, 0)
