@@ -71,15 +71,19 @@ _, frame = cap.read()
 The overall gist of the sudoku detection is to look for the largest *blob* of connected lines in the image and determine its boundaries.
 
 Sudoku images are usually printed in black on white paper. Therefore in majority of cases any colour information are unnecessary and we can simplify the problem by turning the image into grayscale.
-`frame_gray = cv2.cvtColor(frame, cv2.COLOR_BGR2GRAY)`
+```python
+frame_gray = cv2.cvtColor(frame, cv2.COLOR_BGR2GRAY)
+```
 
 As we are interested only contours of the sudoku, we can apply some thresholding. Thresholding turns each pixel into either pure black or pure white depending on whether the value of the pixel is above or below a user specified threshold, thus the name thresholding.
 For example the following code assigns value 255 to any pixel greater or equal than the threshold and 0 to anything below the threshold.
-`_, frame_threshold = cv2.threshold(frame_gray, 127, 255, cv2.THRESH_BINARY)`
+```python
+_, frame_threshold = cv2.threshold(frame_gray, 127, 255, cv2.THRESH_BINARY)
+```
 
 Since in the next step we will be looking for **connected** lines (contours) we need to make sure all the lines stay connected even after the thresholding. This can be a problem as lines in sudokus are usually fairly thin and can get disconnected easily when the threshold value is not ideal. We solve this by blurring the sudoku first, thus making all the lines thicker. Another issue that arises is the question on how to actually pick *the best* threshold value. The good news are we do not have to if we use *adaptive thresholding* where the value is automatically calculated based on a small regions of the image.
 
-```
+```python
 frame_blur = cv2.GaussianBlur(frame_gray, (7, 7), 0)
 frame_threshold = cv2.adaptiveThreshold(frame_blur, 255, cv2.ADAPTIVE_THRESH_GAUSSIAN_C, cv2.THRESH_BINARY, 21, 5)
 ```
@@ -88,10 +92,14 @@ To find more about thresholding functions, refer to [OpenCV: Image Thresholding]
 
 Now onto localising *the biggest blob* in the image. For this OpenCV comes to the rescue once again! We simply determine all the contours (“curve joining all the continuous points (along the boundary), having same colour or intensity”) in the image.
 
-`contours, _ = cv2.findContours(dilate, cv2.RETR_EXTERNAL, cv2.CHAIN_APPROX_SIMPLE)`
+```python
+contours, _ = cv2.findContours(dilate, cv2.RETR_EXTERNAL, cv2.CHAIN_APPROX_SIMPLE)
+```
 
 then find the largest one
-`largest_contour = max(contours, key=cv2.contourArea)`
+```python
+largest_contour = max(contours, key=cv2.contourArea)
+```
 and then get all the points. Here we assume that sudoku has a shape of rhomboid. The following code will go without explanation.
 ```python
 bottom_right, _ = max(enumerate([pt[0][0] + pt[0][1] for pt in largest_contour]), key=operator.itemgetter(1))
