@@ -32,7 +32,7 @@ six==1.15.0
 sudoku-solver @ git+https://github.com/mackopes/sudoku-solver.git@ba31892b0c3d209d2ad11db7824c2579b8ed9a78
 tensorboard==2.3.0
 tensorboard-plugin-wit==1.7.0
-tensorflow==2.3.0
+tensorflow==2.9.3
 tensorflow-estimator==2.3.0
 termcolor==1.1.0
 urllib3==1.25.10
